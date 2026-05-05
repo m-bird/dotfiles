@@ -1,0 +1,18 @@
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+typeset -gU path PATH
+path=(
+  "$HOME/.local/bin"(N-/)
+  "$HOME/bin"(N-/)
+  $path
+)
+
+_host_name="${HOST%%.*}"
+if [[ -n "$_host_name" ]]; then
+  _host_env="${ZDOTDIR}/host/${_host_name}.zshenv"
+  [[ -r "$_host_env" ]] && source "$_host_env"
+fi
+unset _host_name _host_env

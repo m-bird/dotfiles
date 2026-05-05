@@ -1,0 +1,75 @@
+[[ -o interactive ]] || return
+
+HISTDIR="${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
+[[ -d "$HISTDIR" ]] || mkdir -p -- "$HISTDIR"
+HISTFILE="$HISTDIR/history"
+HISTSIZE=50000
+SAVEHIST=50000
+
+setopt share_history
+setopt append_history
+setopt hist_ignore_all_dups
+setopt hist_no_store
+setopt hist_reduce_blanks
+setopt extended_history
+
+function history-all() {
+  history -E 1
+}
+
+bindkey -e
+autoload -Uz history-search-end
+zle -N history-beginning-search-backward-end history-search-end
+zle -N history-beginning-search-forward-end history-search-end
+bindkey "^P" history-beginning-search-backward-end
+bindkey "^N" history-beginning-search-forward-end
+
+_zcompdir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+[[ -d "$_zcompdir" ]] || mkdir -p -- "$_zcompdir"
+autoload -Uz compinit
+compinit -d "$_zcompdir/zcompdump"
+unset _zcompdir
+
+_zfuncs_dir="${ZDOTDIR}/functions.d"
+for _f in "$_zfuncs_dir"/*.zsh(Nn); do
+  source "$_f"
+done
+unset _f _zfuncs_dir
+
+if command -v nvim >/dev/null 2>&1; then
+  export EDITOR=nvim
+elif command -v vim >/dev/null 2>&1; then
+  export EDITOR=vim
+fi
+
+if [ -t 0 ]; then
+  stty stop undef
+fi
+
+export LSCOLORS=ExFxCxdxBxegedabagacad
+export LS_COLORS='di=01;34:ln=01;35:so=01;32:ex=01;31:bd=46;34:cd=43;34:su=41;30:sg=46;30:tw=42;30:ow=43;30'
+
+case "$(uname -s)" in
+  Linux)
+    alias ls='ls -hBF --color=tty --group-directories-first'
+    ;;
+  Darwin|FreeBSD)
+    alias ls='ls -hBFG'
+    ;;
+esac
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+function gls() {
+  command -v fzf >/dev/null 2>&1 || return 1
+
+  local file
+  file=$(git ls-files | fzf) || return 1
+  "${EDITOR:-vi}" "$file"
+}
+
+command -v kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
+command -v direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
+command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"

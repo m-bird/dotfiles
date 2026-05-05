@@ -1,0 +1,29 @@
+# Generated shell artifacts
+home/dot-config/zsh/dot-zcompdump
+home/dot-config/zsh/dot-zcompcache/
+
+# Local/private overlays
+home/dot-config/zsh/host/
+home/dot-config/git/config.local
+home/dot-config/git/config.work
+home/dot-config/git/config.personal
+
+# Credentials and machine-local files
+**/hosts.yml
+**/upload.token
+**/*.private
+**/*.personal
+
+# Editor / OS noise
+*.swp
+.DS_Store
+
+# Work-specific package list (goes in private overlay)
+packages/Brewfile.work
+
+# Local planning artifacts (curate later)
+.claude/
+assets/
+CLAUDE.md
+TODO.md
+reports/
