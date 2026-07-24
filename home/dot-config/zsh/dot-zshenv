@@ -3,6 +3,17 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
+# fpath を毎回組み直す: 継承した FPATH をそのまま使うと、tmux 経由で古い環境
+# (brew upgrade zsh 前に export された値) を引き継いだ pane が、存在しない
+# Cellar バージョンディレクトリを参照して compinit/add-zsh-hook/compdef が
+# "function definition file not found" で失敗する
+typeset -gU fpath
+fpath=(
+  /usr/local/share/zsh/site-functions
+  "${HOMEBREW_PREFIX}/share/zsh/site-functions"(N)
+  "${HOMEBREW_CELLAR}"/zsh/*/share/zsh/functions(N)
+)
+
 typeset -gU path PATH
 path=(
   "$HOME/.local/bin"(N-/)
