@@ -21,6 +21,14 @@ path=(
   $path
 )
 
+# Laod system wide scripts : /etc/profile.d
+# This can set the system default environment variables.
+if [ -d /etc/profile.d ]; then
+  for i in /etc/profile.d/*.sh ; do
+    [ -r $i ] && source $i
+  done
+fi
+
 _host_name="${HOST%%.*}"
 if [[ -n "$_host_name" ]]; then
   _host_env="${ZDOTDIR}/host/${_host_name}.zshenv"
