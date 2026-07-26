@@ -1,15 +1,15 @@
-# Architecture
+# アーキテクチャ
 
-## Overview
+## 概要
 
-Portable dotfiles managed with GNU Stow using the **Hardened Stow Overlay** pattern.
-Public and private configurations are kept in separate, independent repositories applied in order.
+**堅牢化した Stow オーバーレイ** パターンを用いて GNU Stow で管理する移植可能な dotfiles である。
+公開用と非公開用の設定は、独立した別々のリポジトリで管理し、順に適用する。
 
-## Directory layout
+## ディレクトリ構成
 
 ```
-~/.dotfiles/                ← this repository (public baseline)
-├── home/                   ← single Stow package; mirrors $HOME layout
+~/.dotfiles/                ← このリポジトリ（公開用の基本構成）
+├── home/                   ← 単一の Stow パッケージ。$HOME の構成を反映する
 │   ├── dot-gitconfig       → ~/.gitconfig
 │   ├── dot-zshenv          → ~/.zshenv
 │   └── dot-config/
@@ -19,108 +19,107 @@ Public and private configurations are kept in separate, independent repositories
 │       ├── tmux/           → ~/.config/tmux/
 │       └── nvim/           → ~/.config/nvim/
 ├── scripts/
-│   ├── lib.sh              ← shared shell functions (stow_version_ok)
-│   ├── doctor.sh           ← health check
-│   └── install-packages.sh ← Homebrew Brewfile installer
+│   ├── lib.sh              ← 共通のシェル関数（stow_version_ok）
+│   ├── doctor.sh           ← 状態確認
+│   └── install-packages.sh ← Homebrew Brewfile インストーラー
 ├── packages/
-│   ├── Brewfile            ← core Homebrew packages
-│   └── Brewfile.work       ← work-specific packages (git-excluded)
+│   ├── Brewfile            ← 基本の Homebrew パッケージ
+│   └── Brewfile.work       ← 業務用パッケージ（git の管理対象外）
 ├── docs/
-│   ├── architecture.md     ← this file (current shape)
-│   └── adr/                ← decision records (why it is shaped this way)
-├── install.sh              ← main installer
+│   ├── architecture.md     ← このファイル（現在の構成）
+│   └── adr/                ← 設計判断の記録（この構成にした理由）
+├── install.sh              ← メインのインストーラー
 └── README.md
 ```
 
-This file describes the configuration as it is now. The reasoning behind each choice, the
-alternatives that were rejected, and what those choices cost live in [`adr/`](adr/README.md).
+このファイルでは現在の設定を説明する。各選択の理由、採用しなかった代替案、各選択による負担は
+[`adr/`](adr/README.md) に記録する。
 
-## Stow conventions
+## Stow の規則
 
-Stow is invoked as:
+Stow は次のように実行する。
 
 ```sh
 stow -d "$REPO_DIR" -t "$HOME" --dotfiles --no-folding home
 ```
 
-- **`--dotfiles`**: translates `dot-` filename prefix to `.` in the deployed symlink name.
-  Example: `home/dot-zshenv` → `~/.zshenv`, `home/dot-config/zsh/` → `~/.config/zsh/`
-- **`--no-folding`**: never creates directory symlinks; always creates real directories and
-  symlinks individual files. Required so that XDG directories (`~/.config/zsh/` etc.) remain
-  real directories that multiple packages and tools can write into.
-- **Requires GNU Stow >= 2.4.0** — first release that supports `--dotfiles` for both files and directories.
+- **`--dotfiles`**: ファイル名の `dot-` 接頭辞を、配置先のシンボリックリンク名では `.` に変換する。
+  例: `home/dot-zshenv` → `~/.zshenv`、`home/dot-config/zsh/` → `~/.config/zsh/`
+- **`--no-folding`**: ディレクトリへのシンボリックリンクは作成せず、常に実ディレクトリを作成して
+  個々のファイルをシンボリックリンクにする。複数のパッケージやツールが書き込める実ディレクトリとして、
+  XDG ディレクトリ（`~/.config/zsh/` など）を維持するために必要である。
+- **GNU Stow >= 2.4.0 が必要** — ファイルとディレクトリの両方で `--dotfiles` を初めてサポートしたリリースである。
 
-## zsh bootstrap sequence
+## zsh の起動準備の順序
 
-zsh resolves startup files in this order:
+zsh は次の順序で起動ファイルを読み込む。
 
 ```
 ~/.zshenv                   (home/dot-zshenv)
-  └─ sets XDG_CONFIG_HOME, ZDOTDIR=$HOME/.config/zsh
-  └─ sources $ZDOTDIR/.zshenv
+  └─ XDG_CONFIG_HOME、ZDOTDIR=$HOME/.config/zsh を設定する
+  └─ $ZDOTDIR/.zshenv を読み込む
 
 $ZDOTDIR/.zshenv            (home/dot-config/zsh/dot-zshenv)
-  └─ sets PNPM_HOME; sources lib/brew.zsh; normalizes fpath; sources per-host env
-  └─ does not build PATH; removes FPATH's export attribute at the end
+  └─ PNPM_HOME を設定する。lib/brew.zsh を読み込む。fpath を正規化する。ホストごとの環境を読み込む
+  └─ PATH を構築しない。最後に FPATH の export 属性を削除する
 
 $ZDOTDIR/.zprofile          (home/dot-config/zsh/dot-zprofile)
-  └─ runs brew shellenv zsh for the detected ZDOT_HOMEBREW_PREFIX; removes FPATH's export attribute again
-  └─ normalizes PATH precedence
+  └─ 検出した ZDOT_HOMEBREW_PREFIX に対して brew shellenv zsh を実行する。FPATH の export 属性を再び削除する
+  └─ PATH の優先順位を正規化する
 
 $ZDOTDIR/.zshrc             (home/dot-config/zsh/dot-zshrc)
-  └─ interactive shell config
+  └─ 対話シェルの設定
 ```
 
-The two-stage `.zshenv` is necessary: zsh reads `~/.zshenv` before knowing about `ZDOTDIR`.
-The first stage sets `ZDOTDIR`, then explicitly sources `$ZDOTDIR/.zshenv` so the rest of
-the config can live under XDG.
+二段階の `.zshenv` が必要なのは、zsh が `ZDOTDIR` を知る前に `~/.zshenv` を読み込むためである。
+第一段階で `ZDOTDIR` を設定し、続いて明示的に `$ZDOTDIR/.zshenv` を読み込むことで、残りの
+設定を XDG 配下に置けるようにする。
 
-`.zshenv`, `.zprofile`, and `.zshrc` are not reusable modules intended to be sourced
-independently; they rely on zsh's standard startup order.
+`.zshenv`、`.zprofile`、`.zshrc` は、個別に読み込んで再利用することを意図したモジュールではない。
+これらは zsh の標準的な起動順序に依存する。
 
-`lib/brew.zsh` is the single authority for determining the Homebrew installation location. It
-sets `ZDOT_HOMEBREW_PREFIX` without exporting it. Because `.zshenv` runs before `brew shellenv`,
-it cannot depend on `HOMEBREW_PREFIX` or `HOMEBREW_CELLAR` at that stage. When Homebrew zsh is
-available, fpath uses `opt/zsh` rather than a versioned `Cellar/zsh/<version>` path so it follows
-`brew upgrade`. `brew shellenv zsh` exports `FPATH`; `.zprofile` retains its value while
-removing its export attribute.
+`lib/brew.zsh` は Homebrew のインストール先を決定する唯一の基準である。ここで
+`ZDOT_HOMEBREW_PREFIX` を export せずに設定する。`.zshenv` は `brew shellenv` より先に実行されるため、
+この段階では `HOMEBREW_PREFIX` や `HOMEBREW_CELLAR` に依存できない。Homebrew の zsh が利用可能な場合、
+`brew upgrade` に追従できるように、fpath（zsh が関数定義ファイルを探すディレクトリの一覧）ではバージョン付きの `Cellar/zsh/<version>` パスではなく
+`opt/zsh` を使用する。`brew shellenv zsh` は `FPATH` を export する。`.zprofile` は値を保ったまま
+export 属性を削除する。
 
-## PATH policy
+## PATH の方針
 
-The long-term policy is that Homebrew takes precedence for package-manager-managed commands.
-Consequently, in a login shell the effective order is Homebrew `bin`/`sbin`, `~/.local/bin`,
-`~/bin`, `PNPM_HOME/bin`, then the remaining inherited `PATH`. Non-login shells do not run
-`.zprofile`; they rely on inheriting this order from their parent login shell. A non-login shell
-without a login shell ancestor, such as one started directly by a cron job or systemd service,
-does not receive these user-specific PATH additions.
+長期的な方針として、パッケージマネージャーが管理するコマンドでは Homebrew を優先する。
+したがってログインシェルでの実効的な順序は、Homebrew の `bin`/`sbin`、`~/.local/bin`、
+`~/bin`、`PNPM_HOME/bin`、残りの継承した `PATH` となる。非ログインシェルでは `.zprofile` を実行せず、
+親のログインシェルからこの順序を継承する。cron ジョブや systemd サービスから直接起動したものなど、
+ログインシェルを祖先に持たない非ログインシェルには、これらのユーザー固有の PATH 追加は渡らない。
 
-Only the relative order of the entries listed above is guaranteed. The absolute `PATH` string
-still differs between a login shell and its children, because `.zshenv` sources
-`/etc/profile.d/*.sh` on every zsh startup and those scripts prepend their own entries.
+保証するのは、上に挙げた要素の相対的な順序だけである。`.zshenv` は zsh を起動するたびに
+`/etc/profile.d/*.sh` を読み込み、それらのスクリプトが独自の要素を先頭に追加するため、絶対的な `PATH` 文字列は
+ログインシェルとその子プロセスで依然として異なる。
 
-Rationale and rejected alternatives: [ADR 0001](adr/0001-zsh-startup-fpath-and-path-policy.md).
+理由と採用しなかった代替案: [ADR 0001](adr/0001-zsh-startup-fpath-and-path-policy.md)。
 
-## Public / private overlay
+## 公開用 / 非公開用のオーバーレイ
 
-Two independent repositories, applied in order:
+独立した二つのリポジトリを次の順に適用する。
 
-1. **public** (`~/.dotfiles`): this repo — portable baseline, no secrets
-2. **private** (separate repo): machine-local and personal configs; applied after public
+1. **公開用** (`~/.dotfiles`): このリポジトリ。移植可能な基本構成で、秘密情報は含まない。
+2. **非公開用** （別リポジトリ）: マシン固有および個人用の設定。公開用の後に適用する。
 
-Files excluded from the public repo (`.gitignore`):
+公開リポジトリから除外するファイル（`.gitignore`）:
 
-| Path | Reason |
+| パス | 理由 |
 | --- | --- |
-| `home/dot-config/zsh/host/` | per-host env vars |
-| `home/dot-config/git/config.local` | git user identity |
-| `home/dot-config/git/config.work` | work git config |
-| `home/dot-config/git/config.personal` | personal git config |
+| `home/dot-config/zsh/host/` | ホストごとの環境変数 |
+| `home/dot-config/git/config.local` | git のユーザー識別情報 |
+| `home/dot-config/git/config.work` | 業務用 git 設定 |
+| `home/dot-config/git/config.personal` | 個人用 git 設定 |
 
-## install.sh flow
+## install.sh の流れ
 
 ```
-check_stow           version >= 2.4.0
-create_dirs          non-stow-managed dirs (~/.local/state/zsh, ~/.cache/zsh, config.local)
-backup_conflicts     back up real files that stow would refuse to overwrite (first install only)
-apply_stow           stow --restow home
+check_stow           バージョンが 2.4.0 以上か確認する
+create_dirs          stow の管理外のディレクトリを作成する（~/.local/state/zsh、~/.cache/zsh、config.local）
+backup_conflicts     stow が上書きを拒否する実ファイルを退避する（初回インストール時のみ）
+apply_stow           stow --restow home を実行する
 ```

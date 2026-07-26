@@ -1,16 +1,15 @@
-# Architecture Decision Records
+# アーキテクチャ設計判断記録
 
-Why the configuration looks the way it does. `docs/architecture.md` describes the current shape;
-these records describe the decisions that produced it, the alternatives that were rejected, and
-what each choice costs.
+この設定が現在の構成になっている理由を記録する。`docs/architecture.md` は現在の構成を説明し、
+これらの記録はその構成に至った設計判断、採用しなかった代替案、各選択による負担を説明する。
 
-Conventions:
+規則:
 
-- One decision per file, named `NNNN-kebab-case-title.md`, numbered monotonically.
-- Accepted records are not rewritten. If a decision is replaced, add a new record and mark the
-  old one `superseded by NNNN`.
-- Keep each record short. Link to supporting material rather than pasting it.
+- 設計判断はファイルごとに一つとし、`NNNN-kebab-case-title.md` という名前で、番号を単調に増やす。
+- accepted の記録は書き換えない。設計判断を置き換える場合は、新しい記録を追加し、古い記録に
+  `NNNN により置き換え` と記す。
+- 各記録は短く保つ。補足資料は貼り付けるのではなくリンクする。
 
-| # | Title | Status |
+| # | 題名 | ステータス |
 | --- | --- | --- |
-| [0001](0001-zsh-startup-fpath-and-path-policy.md) | zsh startup: fpath normalization and PATH precedence | accepted |
+| [0001](0001-zsh-startup-fpath-and-path-policy.md) | zsh の起動: fpath の正規化と PATH の優先順位 | accepted |
