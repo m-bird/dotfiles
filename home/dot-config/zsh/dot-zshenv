@@ -3,23 +3,28 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
-# fpath を毎回組み直す: 継承した FPATH をそのまま使うと、tmux 経由で古い環境
-# (brew upgrade zsh 前に export された値) を引き継いだ pane が、存在しない
-# Cellar バージョンディレクトリを参照して compinit/add-zsh-hook/compdef が
-# "function definition file not found" で失敗する
+export PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
+
+source "${ZDOTDIR}/lib/brew.zsh"
+
+# 継承した FPATH は古い zsh の Cellar パスを含みうる。export 属性を外して子プロセスへ
+# 伝播させたうえで、既知のディレクトリを前に置き、残りは実在するものだけを残す。
+# brew shellenv は後続の .zprofile なので、ここでは HOMEBREW_PREFIX /
+# HOMEBREW_CELLAR に依存できない。バージョン付きの Cellar/zsh/<version> ではなく
+# opt/zsh を使うことで brew upgrade に追従する。
+typeset +x FPATH
 typeset -gU fpath
+
+# Add known completion/function directories first, then retain only valid
+# directories supplied by the invoked zsh or its parent environment.
 fpath=(
-  /usr/local/share/zsh/site-functions
-  "${HOMEBREW_PREFIX}/share/zsh/site-functions"(N)
-  "${HOMEBREW_CELLAR}"/zsh/*/share/zsh/functions(N)
+  "${ZDOT_HOMEBREW_PREFIX:+$ZDOT_HOMEBREW_PREFIX/share/zsh/site-functions}"(N)
+  "${ZDOT_HOMEBREW_PREFIX:+$ZDOT_HOMEBREW_PREFIX/opt/zsh/share/zsh/functions}"(N)
+  /usr/local/share/zsh/site-functions(N)
+  ${^fpath}(N-/)
 )
 
 typeset -gU path PATH
-path=(
-  "$HOME/.local/bin"(N-/)
-  "$HOME/bin"(N-/)
-  $path
-)
 
 # Laod system wide scripts : /etc/profile.d
 # This can set the system default environment variables.
@@ -35,3 +40,6 @@ if [[ -n "$_host_name" ]]; then
   [[ -r "$_host_env" ]] && source "$_host_env"
 fi
 unset _host_name _host_env
+
+# FPATH is shell-internal state and must not leave .zshenv exported.
+typeset +x FPATH

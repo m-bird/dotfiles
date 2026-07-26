@@ -1,7 +1,21 @@
-if [[ -x /opt/homebrew/bin/brew ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-elif [[ -x /usr/local/bin/brew ]]; then
-  eval "$(/usr/local/bin/brew shellenv)"
-elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# ZDOT_HOMEBREW_PREFIX is initialized by .zshenv in zsh's startup order.
+if [[ -n $ZDOT_HOMEBREW_PREFIX ]]; then
+  eval "$("${ZDOT_HOMEBREW_PREFIX}/bin/brew" shellenv zsh)"
 fi
+
+# brew shellenv zsh exports FPATH. Keep its value, but do not pass it
+# through the process environment.
+typeset +x FPATH
+
+# PATH policy:
+# Homebrew bin/sbin -> ~/.local/bin -> ~/bin -> PNPM_HOME/bin
+# -> the remaining inherited PATH.
+typeset -gU path PATH
+path=(
+  "${ZDOT_HOMEBREW_PREFIX:+$ZDOT_HOMEBREW_PREFIX/bin}"(N-/)
+  "${ZDOT_HOMEBREW_PREFIX:+$ZDOT_HOMEBREW_PREFIX/sbin}"(N-/)
+  "$HOME/.local/bin"(N-/)
+  "$HOME/bin"(N-/)
+  "$PNPM_HOME/bin"(N-/)
+  $path
+)
