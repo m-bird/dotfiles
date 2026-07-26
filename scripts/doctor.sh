@@ -118,20 +118,33 @@ check_nvim() {
 check_secret_scan() {
   pattern='ghp_|password[[:space:]]*=|api[_-]?key[[:space:]]*=|access[-_.]?token|secret[[:space:]]*='
 
-  if command -v rg >/dev/null 2>&1; then
-    if rg -l -i "$pattern" "$REPO_DIR/stow" "$REPO_DIR/install.sh" "$REPO_DIR/README.md" "$REPO_DIR/packages" "$REPO_DIR/scripts/install-packages.sh" >/dev/null 2>&1; then
-      warn "possible secret pattern found in public files"
-    else
-      ok "secret scan"
-    fi
-    return
-  fi
+  set -- "$REPO_DIR/home" "$REPO_DIR/docs" "$REPO_DIR/packages" \
+    "$REPO_DIR/scripts" "$REPO_DIR/install.sh" "$REPO_DIR/README.md"
 
-  if grep -RInE "$pattern" "$REPO_DIR/stow" "$REPO_DIR/install.sh" "$REPO_DIR/README.md" "$REPO_DIR/packages" "$REPO_DIR/scripts/install-packages.sh" >/dev/null 2>&1; then
-    warn "possible secret pattern found in public files"
+  for target in "$@"; do
+    if [ ! -e "$target" ]; then
+      warn "secret scan target missing: $target"
+      return
+    fi
+  done
+
+  # The scan itself must not abort the script under `set -e`: a "no match"
+  # result is exit status 1, which is a normal outcome here.
+  # doctor.sh is excluded: its own pattern definition would always self-match.
+  set +e
+  if command -v rg >/dev/null 2>&1; then
+    hits=$(rg -l -i --glob '!doctor.sh' "$pattern" "$@" 2>/dev/null)
   else
-    ok "secret scan"
+    hits=$(grep -RIlE --exclude=doctor.sh "$pattern" "$@" 2>/dev/null)
   fi
+  rc=$?
+  set -e
+
+  case "$rc" in
+    0) warn "possible secret pattern found in public files: $(printf '%s' "$hits" | tr '\n' ' ')" ;;
+    1) ok "secret scan" ;;
+    *) warn "secret scan failed (exit $rc)" ;;
+  esac
 }
 
 main() {
@@ -146,6 +159,7 @@ main() {
     "$HOME/.config/zsh/.zshenv" \
     "$HOME/.config/zsh/.zprofile" \
     "$HOME/.config/zsh/.zshrc" \
+    "$HOME/.config/zsh/lib/brew.zsh" \
     "$HOME/.config/zsh/functions.d/git_repository.zsh" \
     "$HOME/.config/git/ignore" \
     "$HOME/.config/git/ghq.config" \
